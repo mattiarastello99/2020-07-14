@@ -6,6 +6,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
 import it.polito.tdp.PremierLeague.model.Action;
 import it.polito.tdp.PremierLeague.model.Match;
 import it.polito.tdp.PremierLeague.model.Player;
@@ -36,9 +38,9 @@ public class PremierLeagueDAO {
 		}
 	}
 	
-	public List<Team> listAllTeams(){
+	public void listAllTeams(Map<Integer, Team> mappa){
 		String sql = "SELECT * FROM Teams";
-		List<Team> result = new ArrayList<Team>();
+		
 		Connection conn = DBConnect.getConnection();
 
 		try {
@@ -47,14 +49,13 @@ public class PremierLeagueDAO {
 			while (res.next()) {
 
 				Team team = new Team(res.getInt("TeamID"), res.getString("Name"));
-				result.add(team);
+				mappa.put(res.getInt("TeamID"), team);
 			}
 			conn.close();
-			return result;
 			
 		} catch (SQLException e) {
 			e.printStackTrace();
-			return null;
+			
 		}
 	}
 	
@@ -111,5 +112,160 @@ public class PremierLeagueDAO {
 			return null;
 		}
 	}
+
+	public List<Team> getVertici(Map<Integer, Team> mappa){
+		
+		String sql = "SELECT DISTINCT TeamID "
+				+ "FROM teams";
+		List<Team> result = new ArrayList<>();
+		Connection conn = DBConnect.getConnection();
+
+		try {
+			PreparedStatement st = conn.prepareStatement(sql);
+			ResultSet res = st.executeQuery();
+			while (res.next()) {
+				if(mappa.get(res.getInt("TeamID"))!=null) {
+					Team team = mappa.get(res.getInt("TeamID"));
+					result.add(team);
+				}
+				
+			}
+			conn.close();
+			return result;
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	public void getArchi(Map<Team, Integer> classifica, Map<Integer, Team> idMap) {
+		
+		this.calcolaCasa(classifica, idMap);
+		this.calcolaOspite(classifica, idMap);
+		this.calcolaPareggio(classifica, idMap);
+		
+	}
 	
+	private void calcolaCasa(Map<Team, Integer> classifica, Map<Integer, Team> idMap) {
+		
+		String sql = "SELECT m.TeamHomeID "
+				+ "FROM matches m "
+				+ "WHERE m.ResultOfTeamHome=1 ";
+		
+		Connection conn = DBConnect.getConnection();
+
+		try {
+			PreparedStatement st = conn.prepareStatement(sql);
+			ResultSet res = st.executeQuery();
+			while (res.next()) {
+				
+				//aggiungere 3 punti agli id
+				
+				Team squadra = idMap.get(res.getInt("TeamHomeID"));
+				if(squadra!=null) {
+					if(!classifica.containsKey(squadra)) {
+						//prima giornata di campionato
+						classifica.put(squadra, 3);
+					}else {
+					//squadra ha gia punti
+						classifica.put(squadra, classifica.get(squadra)+3);
+					}
+					
+				}
+		
+			}
+			conn.close();
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
+	private void calcolaOspite(Map<Team, Integer> classifica, Map<Integer, Team> idMap) {
+		
+		String sql = "SELECT m.TeamAwayID "
+				+ "FROM matches m "
+				+ "WHERE m.ResultOfTeamHome=-1";
+		
+		Connection conn = DBConnect.getConnection();
+
+		try {
+			PreparedStatement st = conn.prepareStatement(sql);
+			ResultSet res = st.executeQuery();
+			while (res.next()) {
+				
+				//aggiungere 3 punti agli id
+				
+				Team squadra = idMap.get(res.getInt("TeamAwayID"));
+				if(squadra!=null) {
+					if(!classifica.containsKey(squadra)) {
+						//prima giornata di campionato
+						classifica.put(squadra, 3);
+					}else {
+					//squadra ha gia punti
+						classifica.put(squadra, classifica.get(squadra)+3);
+					}
+					
+				}
+		
+			}
+			conn.close();
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
+	private void calcolaPareggio(Map<Team, Integer> classifica, Map<Integer, Team> idMap) {
+		
+		String sql = "SELECT m.TeamHomeID, m.TeamAwayID "
+				+ "FROM matches m "
+				+ "WHERE m.ResultOfTeamHome=0";
+		
+		Connection conn = DBConnect.getConnection();
+
+		try {
+			PreparedStatement st = conn.prepareStatement(sql);
+			ResultSet res = st.executeQuery();
+			while (res.next()) {
+				
+				//aggiungere 3 punti agli id
+				
+				Team squadra1 = idMap.get(res.getInt("TeamHomeID"));
+				Team squadra2 = idMap.get(res.getInt("TeamAwayID"));
+				
+				if(squadra1!=null && squadra2!=null) {
+					if(!classifica.containsKey(squadra1)) {
+						//prima giornata di campionato
+						classifica.put(squadra1, 1);
+					}else {
+					//squadra ha gia punti
+						classifica.put(squadra1, classifica.get(squadra1)+1);
+					}
+					
+					if(!classifica.containsKey(squadra1)) {
+						//prima giornata di campionato
+						classifica.put(squadra2, 1);
+					}else {
+					//squadra ha gia punti
+						classifica.put(squadra2, classifica.get(squadra2)+1);
+					}
+					
+				}
+		
+			}
+			conn.close();
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		
+	}
+
+
+
+
 }
